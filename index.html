@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>高岡・秋山 訪問アポイント予約</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f6f8;
+      margin: 0;
+      padding: 16px;
+      color: #222;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 21px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 14px 8px;
+      border: none;
+      border-radius: 10px;
+      background: #ddd;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #06c755;
+      color: white;
+      font-weight: bold;
+    }
+
+    .toolbar {
+      text-align: right;
+      margin-bottom: 12px;
+    }
+
+    .refresh-btn {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 5px #0000000d;
+    }
+
+    .date {
+      font-size: 17px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .period-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .reserve-btn {
+      flex: 1;
+      background: #06c755;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 13px 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .reserved-btn {
+      flex: 1;
+      background: #e5e7eb;
+      color: #777;
+      border: none;
+      border-radius: 8px;
+      padding: 13px 6px;
+      font-size: 14px;
+    }
+
+    .detail {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.9;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    select {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin: 16px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .method-group {
+      margin: 12px 0;
+      display: flex;
+      gap: 20px;
+    }
+
+    .method-group label {
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .all-day-box {
+      background: #f0f9f4;
+      border: 1px solid #ccebd8;
+      border-radius: 10px;
+      padding: 14px;
+      margin: 16px 0;
+    }
+
+    .all-day-box label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+    }
+
+    .all-day-box input {
+      width: 20px;
+      height: 20px;
+    }
+
+    .hint {
+      color: #666;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .confirm-btn,
+    .cancel-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .confirm-btn {
+      background: #06c755;
+      color: white;
+    }
+
+    .cancel-btn {
+      background: #eee;
+      color: #333;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 30px;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h2>📅 訪問アポイント予約</h2>
+  <p class="subtitle">高岡・秋山 共通スケジュール</p>
+
+  <div class="tabs">
+    <button
+      id="tabSlots"
+      class="tab active"
+      onclick="switchTab('slots')">
+      📅 予約状況
+    </button>
+
+    <button
+      id="tabResults"
+      class="tab"
+      onclick="switchTab('results')">
+      📋 予約結果
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <button class="refresh-btn" onclick="loadData()">
+      🔄 更新
+    </button>
+  </div>
+
+  <div id="content">読み込み中...</div>
+
+</div>
+
+<!-- 予約ポップアップ -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+
+    <h3>予約内容の確認</h3>
+
+    <p>訪問予定日：<strong id="selectedDate"></strong><br>時間帯：<strong id="selectedTime"></strong></p>
+
+    <label for="member">予約者を選択してください</label>
+
+    <select id="member">
+      <option value="">選択してください</option>
+    </select>
+
+    <div>
+      <strong>予約方法</strong>
+
+      <div class="method-group">
+        <label>
+          <input
+            type="radio"
+            name="method"
+            value="訪問"
+            checked
+            onchange="updateMethod()">
+          訪問
+        </label>
+
+        <label>
+          <input
+            type="radio"
+            name="method"
+            value="ZOOM"
+            onchange="updateMethod()">
+          ZOOM
+        </label>
+      </div>
+    </div>
+
+    <div class="all-day-box" id="allDayBox">
+      <label>
+        <input type="checkbox" id="allDay">
+        1日必要（午前・午後の両方を予約）
+      </label>
+      <div class="hint">
+        ※午前・午後の両方が空いている場合のみ予約できます。
+      </div>
+    </div>
+
+    <button
+      class="confirm-btn"
+      id="confirmBtn"
+      onclick="confirmReservation()">
+      予約確定
+    </button>
+
+    <button
+      class="cancel-btn"
+      id="cancelBtn"
+      onclick="closeModal()">
+      キャンセル
+    </button>
+
+  </div>
+</div>
+
+<script>
+  // GAS Webアプリ（/exec）のURL。テスト環境→本番切替時はここだけ変更する
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwJ30r-T3sOrhQVplL_lD50tLBFtUW1EJZB_-LBtpsE1IqRoPjSqIAWvBE-4P-wC-kVEA/exec';
+
+  let currentTab = 'slots';
+  let selectedSlot = null;
+  let members = [];
+  let slots = [];
+  let reservations = [];
+  let processing = false;
+
+  /**
+   * GASとの通信
+   * credentials: 'omit' でGoogleのCookieを送らない
+   * → 端末のGoogleログイン状態に関係なく匿名で処理される
+   */
+  function callApi(method, payload) {
+    const options = {
+      method: method,
+      credentials: 'omit',
+      redirect: 'follow',
+      cache: 'no-store'
+    };
+
+    let url = API_URL;
+
+    if (method === 'GET') {
+      url += '?action=data&_=' + Date.now();
+    } else {
+      // text/plain にすることでCORSのプリフライトを発生させない
+      options.headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+      options.body = JSON.stringify(payload);
+    }
+
+    return fetch(url, options)
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('通信エラーが発生しました（' + response.status + '）。');
+        }
+        return response.json();
+      })
+      .then(function(result) {
+        if (!result || !result.ok) {
+          throw new Error((result && result.error) || '処理に失敗しました。');
+        }
+        return result.data;
+      });
+  }
+
+  // "2026/11/25" → "11月25日（水）"（形式が違う場合はそのまま表示）
+  function formatDate(text) {
+    const m = String(text || '').match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if (!m) return text;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const week = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+    return Number(m[2]) + '月' + Number(m[3]) + '日（' + week + '）';
+  }
+
+  function loadData() {
+    const container = document.getElementById('content');
+    container.textContent = '読み込み中...';
+
+    callApi('GET')
+      .then(function(data) {
+        members = data.members;
+        slots = data.slots;
+        reservations = data.reservations;
+        render();
+      })
+      .catch(function(error) {
+        container.textContent = '読み込みエラー：' + error.message;
+      });
+  }
+
+  function switchTab(tab) {
+    currentTab = tab;
+
+    document.getElementById('tabSlots')
+      .classList.toggle('active', tab === 'slots');
+
+    document.getElementById('tabResults')
+      .classList.toggle('active', tab === 'results');
+
+    render();
+  }
+
+  function render() {
+    const container = document.getElementById('content');
+    container.innerHTML = '';
+
+    if (currentTab === 'slots') {
+      renderSlots(container);
+    } else {
+      renderResults(container);
+    }
+  }
+
+  // 午前・午後を横並びに表示（予約済みの日も表示し続ける）
+  function renderSlots(container) {
+    const grouped = {};
+
+    slots.forEach(function(slot) {
+      if (!grouped[slot.date]) {
+        grouped[slot.date] = {
+          date: slot.date,
+          morning: null,
+          afternoon: null
+        };
+      }
+
+      if (slot.time === '午前') {
+        grouped[slot.date].morning = slot;
+      }
+
+      if (slot.time === '午後') {
+        grouped[slot.date].afternoon = slot;
+      }
+    });
+
+    const days = Object.values(grouped);
+
+    if (days.length === 0) {
+      container.innerHTML =
+        '<div class="empty">日程が登録されていません。</div>';
+      return;
+    }
+
+    days.forEach(function(day) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const date = document.createElement('div');
+      date.className = 'date';
+      date.textContent = '📅 ' + formatDate(day.date);
+
+      const buttons = document.createElement('div');
+      buttons.className = 'period-buttons';
+
+      [
+        { key: 'morning', label: '午前' },
+        { key: 'afternoon', label: '午後' }
+      ].forEach(function(period) {
+        const slot = day[period.key];
+        const button = document.createElement('button');
+
+        if (slot && slot.status === '空き') {
+          button.className = 'reserve-btn';
+          button.textContent = period.label + '予約';
+
+          button.onclick = function() {
+            openModal(slot);
+          };
+
+        } else {
+          button.className = 'reserved-btn';
+          button.disabled = true;
+
+          if (slot && slot.status === '予約済み') {
+            button.textContent = '🔒 ' + period.label + ' 予約済み';
+          } else {
+            button.textContent = period.label + ' －';
+          }
+        }
+
+        buttons.appendChild(button);
+      });
+
+      card.appendChild(date);
+      card.appendChild(buttons);
+      container.appendChild(card);
+    });
+  }
+
+  // 予約結果
+  function renderResults(container) {
+    if (reservations.length === 0) {
+      container.innerHTML =
+        '<div class="empty">予約結果はまだありません。</div>';
+      return;
+    }
+
+    reservations.forEach(function(item) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const date = document.createElement('div');
+      date.className = 'date';
+      date.textContent = '📅 ' + formatDate(item.date) + ' ' + item.time;
+
+      const detail = document.createElement('div');
+      detail.className = 'detail';
+
+      [
+        '訪問予定日：' + formatDate(item.date),
+        '時間帯：' + item.time,
+        '予約方法：' + item.method,
+        '予約者：' + item.member,
+        '予約日時：' + item.reservedAt
+      ].forEach(function(text) {
+        const line = document.createElement('div');
+        line.textContent = text;
+        detail.appendChild(line);
+      });
+
+      card.appendChild(date);
+      card.appendChild(detail);
+      container.appendChild(card);
+    });
+  }
+
+  // 予約画面を開く
+  function openModal(slot) {
+    if (processing) return;
+
+    selectedSlot = slot;
+
+    document.getElementById('selectedDate').textContent = formatDate(slot.date);
+    document.getElementById('selectedTime').textContent = slot.time;
+
+    const select = document.getElementById('member');
+
+    select.innerHTML =
+      '<option value="">選択してください</option>';
+
+    members.forEach(function(name) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+
+    // 初期値は訪問
+    document.querySelector(
+      'input[name="method"][value="訪問"]'
+    ).checked = true;
+
+    document.getElementById('allDay').checked = false;
+
+    updateMethod();
+
+    document.getElementById('modal').style.display = 'flex';
+  }
+
+  // 訪問・ZOOM切り替え（1日必要は訪問のみ）
+  function updateMethod() {
+    const method = document.querySelector(
+      'input[name="method"]:checked'
+    ).value;
+
+    const box = document.getElementById('allDayBox');
+
+    if (method === '訪問') {
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+      document.getElementById('allDay').checked = false;
+    }
+  }
+
+  function closeModal() {
+    if (processing) return;
+
+    document.getElementById('modal').style.display = 'none';
+    selectedSlot = null;
+  }
+
+  // 予約確定
+  function confirmReservation() {
+    if (processing || !selectedSlot) return;
+
+    const member = document.getElementById('member').value;
+
+    const method = document.querySelector(
+      'input[name="method"]:checked'
+    ).value;
+
+    const allDay =
+      method === '訪問' &&
+      document.getElementById('allDay').checked;
+
+    if (!member) {
+      alert('予約者を選択してください。');
+      return;
+    }
+
+    const slot = selectedSlot;
+    const button = document.getElementById('confirmBtn');
+    const cancelButton = document.getElementById('cancelBtn');
+
+    processing = true;
+    button.disabled = true;
+    cancelButton.disabled = true;
+    button.textContent = '予約処理中...';
+
+    function finish(message) {
+      processing = false;
+      button.disabled = false;
+      cancelButton.disabled = false;
+      button.textContent = '予約確定';
+      closeModal();
+      alert(message);
+      loadData();
+    }
+
+    callApi('POST', {
+      action: 'reserve',
+      row: slot.row,
+      memberName: member,
+      expectedDate: slot.date,
+      expectedTime: slot.time,
+      method: method,
+      allDay: allDay
+    })
+      .then(function(result) {
+        finish(result.message);
+      })
+      .catch(function(error) {
+        // 通信断の場合は予約が完了している可能性があるため確認を促す
+        finish(error.message + '\n予約状況を更新して確認してください。');
+      });
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>
