@@ -352,6 +352,12 @@
     }
 
     return fetch(url, options)
+      .catch(function() {
+        // 通信自体が失敗（サーバーで処理されたか不明）
+        const error = new Error('通信が途切れました。');
+        error.unknown = true;
+        throw error;
+      })
       .then(function(response) {
         if (!response.ok) {
           throw new Error('通信エラーが発生しました（' + response.status + '）。');
@@ -375,9 +381,13 @@
     return Number(m[2]) + '月' + Number(m[3]) + '日（' + week + '）';
   }
 
-  function loadData() {
+  // silent = true のときは表示中の一覧を消さずに裏側で更新する
+  function loadData(silent) {
     const container = document.getElementById('content');
-    container.textContent = '読み込み中...';
+
+    if (!silent) {
+      container.textContent = '読み込み中...';
+    }
 
     callApi('GET')
       .then(function(data) {
@@ -387,8 +397,30 @@
         render();
       })
       .catch(function(error) {
-        container.textContent = '読み込みエラー：' + error.message;
+        if (!silent) {
+          container.textContent = '読み込みエラー：' + error.message;
+        }
       });
+  }
+
+  // 予約成功時：サーバーの保存完了後に、画面上の枠と予約結果をすぐ反映する
+  function applyReservation(result) {
+    (result.rows || []).forEach(function(row) {
+      slots.forEach(function(slot) {
+        if (slot.row === row) slot.status = '予約済み';
+      });
+    });
+
+    reservations.push({
+      date: result.date,
+      time: result.time,
+      member: result.member,
+      reservedAt: result.reservedAt,
+      method: result.method,
+      reservationId: result.reservationId
+    });
+
+    render();
   }
 
   function switchTab(tab) {
@@ -611,14 +643,12 @@
     cancelButton.disabled = true;
     button.textContent = '予約処理中...';
 
-    function finish(message) {
+    function unlock() {
       processing = false;
       button.disabled = false;
       cancelButton.disabled = false;
       button.textContent = '予約確定';
       closeModal();
-      alert(message);
-      loadData();
     }
 
     callApi('POST', {
@@ -631,11 +661,32 @@
       allDay: allDay
     })
       .then(function(result) {
-        finish(result.message);
+        // 保存完了の応答を受けてから、画面反映→完了メッセージ
+        unlock();
+        try {
+          applyReservation(result);
+        } catch (e) {
+          // 画面反映に失敗しても予約自体は成立しているため、成功表示を優先
+        }
+        alert(result.message);
+        // 最新状態の再取得は完了メッセージの後に、一覧を消さずに実施
+        loadData(true);
       })
       .catch(function(error) {
-        // 通信断の場合は予約が完了している可能性があるため確認を促す
-        finish(error.message + '\n予約状況を更新して確認してください。');
+        unlock();
+
+        if (error.unknown) {
+          // 予約が成立したか不明：自動で再送しない
+          alert(
+            '通信が途切れたため、予約が完了したか確認できませんでした。\n' +
+            '二重予約を防ぐため、もう一度予約する前に、' +
+            '予約状況の画面で予約済みになっていないか確認してください。'
+          );
+          loadData();
+        } else {
+          alert(error.message);
+          loadData(true);
+        }
       });
   }
 
